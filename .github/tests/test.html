@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test - Terraform Survivor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #1a1d29;
+      color: white;
+    }
+
+    .test-section {
+      background: #252936;
+      padding: 20px;
+      margin: 10px 0;
+      border-radius: 8px;
+    }
+
+    .success {
+      color: #06d6a0;
+    }
+
+    .error {
+      color: #ef476f;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🧪 Terraform Survivor - Test Page</h1>
+
+  <div class="test-section">
+    <h2>1. Config Test</h2>
+    <div id="configTest">Testing...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>2. Module Loading Test</h2>
+    <div id="moduleTest">Testing...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>3. Component Test</h2>
+    <div id="componentTest">Testing...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>4. Game Test</h2>
+    <div id="gameTest">Testing...</div>
+    <button onclick="testGame()">Start Game</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Console Output</h2>
+    <div id="console"
+      style="background: #000; padding: 10px; font-family: monospace; max-height: 300px; overflow-y: auto;"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const log = (msg, type = 'info') => {
+      const consoleDiv = document.getElementById('console');
+      const color = type === 'error' ? '#ef476f' : type === 'success' ? '#06d6a0' : '#fff';
+      consoleDiv.innerHTML += `<div style="color: ${color}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    };
+
+    // Test 1: Config
+    if (window.GAME_CONFIG) {
+      document.getElementById('configTest').innerHTML = `
+                <span class="success">✓ Config loaded successfully</span><br>
+                Environment: ${window.GAME_CONFIG.environment}<br>
+                Difficulty: ${window.GAME_CONFIG.difficulty}
+            `;
+      log('Config loaded: ' + JSON.stringify(window.GAME_CONFIG, null, 2), 'success');
+    } else {
+      document.getElementById('configTest').innerHTML = '<span class="error">✗ Config not loaded</span>';
+      log('Config failed to load', 'error');
+    }
+
+    // Test 2: Module loading
+    import('./js/main.js')
+      .then(() => {
+        document.getElementById('moduleTest').innerHTML = '<span class="success">✓ Modules loaded successfully</span>';
+        log('Modules loaded successfully', 'success');
+      })
+      .catch(err => {
+        document.getElementById('moduleTest').innerHTML = `<span class="error">✗ Module loading failed: ${err.message}</span>`;
+        log('Module loading error: ' + err.message, 'error');
+        console.error(err);
+      });
+
+    // Test 3: Components
+    setTimeout(() => {
+      if (window.game) {
+        document.getElementById('componentTest').innerHTML = '<span class="success">✓ Components initialized</span>';
+        log('Components initialized', 'success');
+      } else {
+        document.getElementById('componentTest').innerHTML = '<span class="error">✗ Components not initialized</span>';
+        log('Components not initialized', 'error');
+      }
+    }, 1000);
+
+    // Test 4: Game
+    function testGame() {
+      if (window.game) {
+        document.getElementById('gameTest').innerHTML = `
+                    <span class="success">✓ Game running</span><br>
+                    Health: ${window.game.player.health}<br>
+                    Day: ${window.game.player.day}<br>
+                    <button onclick="window.game.explore()">Test Explore</button>
+                    <button onclick="window.game.rest()">Test Rest</button>
+                `;
+        log('Game is running', 'success');
+      } else {
+        document.getElementById('gameTest').innerHTML = '<span class="error">✗ Game not initialized</span>';
+        log('Game not initialized', 'error');
+      }
+    }
+
+    // Capture console errors
+    window.addEventListener('error', (e) => {
+      log('ERROR: ' + e.message + ' at ' + e.filename + ':' + e.lineno, 'error');
+    });
+
+    log('Test page loaded', 'info');
+  </script>
+</body>
+
+</html>

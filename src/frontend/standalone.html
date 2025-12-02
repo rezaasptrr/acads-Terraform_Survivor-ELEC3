@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terraform Survivor - Standalone</title>
+  <link rel="stylesheet" href="css/style.css">
+
+</head>
+
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="header-content">
+        <h1 class="app-title">🏔️ Terraform Survivor</h1>
+        <p class="app-subtitle">Infrastructure as Code meets Survival RPG</p>
+      </div>
+      <button id="headerSettingsBtn" class="header-settings-btn" title="Settings (Press O)" aria-label="Open Settings">
+        ⚙️
+      </button>
+    </header>
+
+    <main class="game-layout">
+      <aside class="sidebar-left">
+        <div id="statsPanel" class="panel"></div>
+        <div id="inventoryPanel" class="panel"></div>
+      </aside>
+
+      <section class="main-content">
+        <div id="storyLog" class="panel story-panel"></div>
+        <div id="actionPanel" class="panel action-panel"></div>
+      </section>
+
+      <aside class="sidebar-right">
+        <div id="terraformConfig" class="panel"></div>
+      </aside>
+    </main>
+
+    <div id="modalContainer"></div>
+    <div id="settingsPanel"></div>
+    <div id="notificationContainer"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    // Check if config loaded
+    if (!window.GAME_CONFIG) {
+      alert('Config not loaded! Make sure config.js exists.');
+    } else {
+      console.log('✓ Config loaded:', window.GAME_CONFIG);
+    }
+  </script>
+
+  <!-- Inline all components to avoid CORS issues -->
+  <script type="module">
+    // Base Component
+    class Component {
+      constructor(containerId) {
+        this.container = document.getElementById(containerId);
+        this.state = {};
+      }
+
+      setState(newState) {
+        this.state = { ...this.state, ...newState };
+        this.render();
+      }
+
+      render() {
+        throw new Error('Component must implement render method');
+      }
+
+      mount() {
+        this.render();
+      }
+
+      unmount() {
+        if (this.container) {
+          this.container.innerHTML = '';
+        }
+      }
+    }
+
+    // StatsPanel Component
+    class StatsPanel extends Component {
+      constructor(containerId) {
+        super(containerId);
+        this.state = {
+          health: 100,
+          hunger: 100,
+          thirst: 100,
+          energy: 100,
+          day: 1
+        };
+      }
+
+      updateStats(stats) {
+        this.setState(stats);
+      }
+
+      createStatBar(label, emoji, value, maxValue, barClass) {
+        const percentage = Math.max(0, Math.min(100, (value / maxValue) * 100));
+        return `
+                    <div class="stat-item">
+                        <div class="stat-header">
+                            <span class="stat-label">${emoji} ${label}</span>
+                            <span class="stat-value">${Math.floor(value)}/${maxValue}</span>
+                        </div>
+                        <div class="stat-bar">
+                            <div class="stat-bar-fill ${barClass}" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+      }
+
+      render() {
+        if (!this.container) return;
+        this.container.innerHTML = `
+                    <div class="stats-panel-content">
+                        <h3 class="panel-title">Player Stats</h3>
+                        <div class="stats-list">
+                            ${this.createStatBar('Health', '❤️', this.state.health, 100, 'health-bar')}
+                            ${this.createStatBar('Hunger', '🍖', this.state.hunger, 100, 'hunger-bar')}
+                            ${this.createStatBar('Thirst', '💧', this.state.thirst, 100, 'thirst-bar')}
+                            ${this.createStatBar('Energy', '⚡', this.state.energy, 100, 'energy-bar')}
+                        </div>
+                        <div class="day-counter">
+                            <span class="day-label">Day</span>
+                            <span class="day-number">${this.state.day}</span>
+                        </div>
+                    </div>
+                `;
+      }
+    }
+
+    // StoryLog Component
+    class StoryLog extends Component {
+      constructor(containerId) {
+        super(containerId);
+        this.state = {
+          messages: [],
+          maxMessages: 10
+        };
+      }
+
+      addMessage(text, type = 'info', details = null) {
+        const messages = [...this.state.messages];
+        const now = new Date();
+        const timestamp = now.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+
+        messages.push({ text, type, timestamp, details, time: Date.now() });
+        if (messages.length > this.state.maxMessages) {
+          messages.shift();
+        }
+        this.setState({ messages });
+        this.scrollToBottom();
+      }
+
+      scrollToBottom() {
+        if (this.container) {
+          const logContent = this.container.querySelector('.story-log-content');
+          if (logContent) {
+            logContent.scrollTop = logContent.scrollHeight;
+          }
+        }
+      }
+
+      getMessageIcon(type) {
+        const icons = {
+          success: '✅',
+          danger: '⚠️',
+          info: 'ℹ️',
+          event: '🎲',
+          craft: '🔨',
+          combat: '⚔️'
+        };
+        return icons[type] || icons.info;
+      }
+
+      render() {
+        if (!this.container) return;
+        const messagesHTML = this.state.messages.map(msg => `
+          <div class="story-message ${msg.type}" data-time="${msg.time}">
+            <span class="message-icon" aria-hidden="true">${this.getMessageIcon(msg.type)}</span>
+            <div class="message-content">
+              <span class="message-text">${msg.text}</span>
+              <span class="message-timestamp">${msg.timestamp}</span>
+              ${msg.details ? `<div class="message-details">${msg.details}</div>` : ''}
+            </div>
+          </div>
+        `).join('');
+
+        this.container.innerHTML = `
+          <div class="story-log-wrapper">
+            <h3 class="panel-title">Story Log</h3>
+            <div 
+              class="story-log-content" 
+              role="log" 
+              aria-live="polite" 
+              aria-atomic="false"
+              aria-label="Game events log"
+            >
+              ${messagesHTML || '<div class="story-message info"><span class="message-icon">ℹ️</span><div class="message-content"><span class="message-text">Welcome to Terraform Survivor!</span></div></div>'}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // ActionPanel Component
+    class ActionPanel extends Component {
+      constructor(containerId, onAction) {
+        super(containerId);
+        this.onAction = onAction;
+        this.state = {
+          actions: [
+            { id: 'explore', label: 'Explore', icon: '🔍', cost: 15, description: 'Search for resources' },
+            { id: 'hunt', label: 'Hunt', icon: '🏹', cost: 20, description: 'Hunt for food (risky)' },
+            { id: 'gather', label: 'Gather Water', icon: '💧', cost: 10, description: 'Find water source' },
+            { id: 'rest', label: 'Rest', icon: '😴', cost: 0, description: 'Sleep until next day' },
+            { id: 'craft', label: 'Craft', icon: '🔨', cost: 5, description: 'Build items' },
+            { id: 'status', label: 'Status', icon: '📊', cost: 0, description: 'View detailed stats' }
+          ]
+        };
+      }
+
+      handleClick(actionId) {
+        if (this.onAction) {
+          this.onAction(actionId);
+        }
+      }
+
+      render() {
+        if (!this.container) return;
+
+        const shortcuts = {
+          explore: 'E',
+          hunt: 'H',
+          gather: 'W',
+          rest: 'R',
+          craft: 'C',
+          status: 'S'
+        };
+
+        const actionsHTML = this.state.actions.map(action => {
+          const hotkey = shortcuts[action.id];
+          return `
+            <button 
+              class="action-button" 
+              data-action="${action.id}"
+              aria-label="${action.label} - ${action.description}${action.cost > 0 ? '. Costs ' + action.cost + ' energy' : ''}"
+              title="${hotkey ? 'Hotkey: ' + hotkey : ''}"
+            >
+              <span class="action-icon" aria-hidden="true">${action.icon}</span>
+              <span class="action-label">${action.label}</span>
+              ${action.cost > 0 ? `<span class="action-cost" aria-label="${action.cost} energy">⚡${action.cost}</span>` : ''}
+              <span class="action-description">${action.description}</span>
+              ${hotkey ? `<kbd class="hotkey-badge" aria-hidden="true">${hotkey}</kbd>` : ''}
+            </button>
+          `;
+        }).join('');
+
+        this.container.innerHTML = `
+          <div class="action-panel-content">
+            <h3 class="panel-title">
+              Actions
+              <button 
+                class="help-button" 
+                data-action="help"
+                aria-label="Show keyboard shortcuts"
+                title="Show keyboard shortcuts (Press ?)"
+              >
+                ⌨️
+              </button>
+            </h3>
+            <div class="action-grid" role="group" aria-label="Game actions">
+              ${actionsHTML}
+            </div>
+          </div>
+        `;
+
+        this.container.querySelectorAll('[data-action]').forEach(button => {
+          button.addEventListener('click', (e) => {
+            const actionId = e.currentTarget.dataset.action;
+            this.handleClick(actionId);
+          });
+        });
+      }
+    }
+
+    // Inventory Component
+    class InventoryComponent extends Component {
+      constructor(containerId, onItemClick) {
+        super(containerId);
+        this.onItemClick = onItemClick;
+        this.state = {
+          items: {},
+          selectedItem: null
+        };
+      }
+
+      updateItems(items) {
+        this.setState({ items });
+      }
+
+      getItemIcon(itemName) {
+        const icons = {
+          wood: '🪵', stone: '🪨', berries: '🫐', meat: '🍖',
+          water: '💧', campfire: '🔥', shelter: '🏠', spear: '🗡️',
+          bandage: '🩹', food: '🍞'
+        };
+        return icons[itemName.toLowerCase()] || '📦';
+      }
+
+      isConsumable(itemName) {
+        return ['berries', 'meat'].includes(itemName.toLowerCase());
+      }
+
+      selectItem(itemName) {
+        this.setState({ selectedItem: itemName });
+      }
+
+      render() {
+        if (!this.container) return;
+        const itemsHTML = Object.entries(this.state.items)
+          .filter(([_, amount]) => amount > 0)
+          .map(([name, amount]) => {
+            const isFood = this.isConsumable(name);
+            return `
+              <div class="inventory-item ${this.state.selectedItem === name ? 'selected' : ''} ${isFood ? 'consumable' : ''}" 
+                   data-item="${name}"
+                   title="${isFood ? 'Click to eat' : name}">
+                <div class="item-icon">${this.getItemIcon(name)}</div>
+                <div class="item-name">${name}</div>
+                <div class="item-amount">${amount}</div>
+                ${isFood ? '<div class="item-action">🍴</div>' : ''}
+              </div>
+            `;
+          }).join('');
+
+        this.container.innerHTML = `
+          <div class="inventory-content">
+            <h3 class="panel-title">Inventory</h3>
+            <div class="inventory-grid">
+              ${itemsHTML || '<div class="inventory-empty">No items yet</div>'}
+            </div>
+          </div>
+        `;
+
+        // Add event listeners
+        this.container.querySelectorAll('.inventory-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            const itemName = e.currentTarget.dataset.item;
+            this.selectItem(itemName);
+
+            // Trigger callback if item is consumable
+            if (this.isConsumable(itemName) && this.onItemClick) {
+              this.onItemClick(itemName);
+            }
+          });
+        });
+      }
+    }
+
+    // TerraformConfig Component
+    class TerraformConfig extends Component {
+      constructor(containerId) {
+        super(containerId);
+        this.state = {
+          config: null,
+          expanded: true
+        };
+      }
+
+      setConfig(config) {
+        this.setState({ config });
+      }
+
+      toggleExpanded() {
+        this.setState({ expanded: !this.state.expanded });
+
+        // Toggle collapsed class on game layout
+        const gameLayout = document.querySelector('.game-layout');
+        const sidebarRight = document.querySelector('.sidebar-right');
+
+        if (gameLayout) {
+          gameLayout.classList.toggle('config-collapsed');
+        }
+        if (sidebarRight) {
+          sidebarRight.classList.toggle('collapsed');
+        }
+      }
+
+      formatValue(value) {
+        if (typeof value === 'boolean') {
+          return value ? '✅ Enabled' : '❌ Disabled';
+        }
+        if (typeof value === 'number') {
+          return value.toFixed(2);
+        }
+        return value;
+      }
+
+      getEnvironmentClass(env) {
+        const classes = {
+          development: 'env-dev',
+          staging: 'env-staging',
+          production: 'env-prod'
+        };
+        return classes[env] || 'env-default';
+      }
+
+      render() {
+        if (!this.container || !this.state.config) return;
+        const config = this.state.config;
+        const envClass = this.getEnvironmentClass(config.environment);
+
+        const configItems = [
+          { label: 'Environment', value: config.environment, icon: '🌍' },
+          { label: 'Difficulty', value: config.difficulty, icon: '⚙️' },
+          { label: 'Hunger Decay', value: `${config.gameSettings.hungerDecayRate}x`, icon: '🍖' },
+          { label: 'Thirst Decay', value: `${config.gameSettings.thirstDecayRate}x`, icon: '💧' },
+          { label: 'Energy Decay', value: `${config.gameSettings.energyDecayRate}x`, icon: '⚡' },
+          { label: 'Resource Multiplier', value: `${config.gameSettings.resourceMultiplier}x`, icon: '📈' },
+          { label: 'Danger Level', value: `${(config.gameSettings.dangerLevel * 100).toFixed(0)}%`, icon: '⚠️' },
+          { label: 'Crafting', value: config.features.craftingEnabled, icon: '🔨' },
+          { label: 'Weather Events', value: config.features.weatherEvents, icon: '🌦️' },
+          { label: 'Random Events', value: config.features.randomEvents, icon: '🎲' }
+        ];
+
+        const configHTML = configItems.map(item => `
+          <div class="config-item">
+            <span class="config-icon">${item.icon}</span>
+            <span class="config-label">${item.label}:</span>
+            <span class="config-value">${this.formatValue(item.value)}</span>
+          </div>
+        `).join('');
+
+        this.container.innerHTML = `
+          <div class="terraform-config-wrapper ${envClass}">
+            <div class="config-header" data-toggle>
+              <h3 class="panel-title">
+                <span class="terraform-icon">🔧</span>
+                Terraform Configuration
+              </h3>
+              <button class="toggle-button">${this.state.expanded ? '▼' : '▶'}</button>
+            </div>
+            <div class="config-content ${this.state.expanded ? 'expanded' : 'collapsed'}">
+              <div class="config-badge ${envClass}">
+                ${config.environment.toUpperCase()}
+              </div>
+              <div class="config-grid">
+                ${configHTML}
+              </div>
+              <div class="config-footer">
+                <div class="config-meta">
+                  <span>🚀 Version: ${config.deploymentInfo.version}</span>
+                  <span>🔧 Deployed by: ${config.deploymentInfo.deployedBy}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Add toggle listener
+        const toggleButton = this.container.querySelector('[data-toggle]');
+        if (toggleButton) {
+          toggleButton.addEventListener('click', () => this.toggleExpanded());
+        }
+      }
+    }
+
+    // Modal Component
+    class Modal extends Component {
+      constructor(containerId) {
+        super(containerId);
+        this.state = {
+          isOpen: false,
+          title: '',
+          content: '',
+          type: 'info'
+        };
+      }
+
+      open(title, content, type = 'info') {
+        this.setState({ isOpen: true, title, content, type });
+        document.body.style.overflow = 'hidden';
+      }
+
+      close() {
+        this.setState({ isOpen: false });
+        document.body.style.overflow = '';
+      }
+
+      render() {
+        if (!this.container) return;
+        if (!this.state.isOpen) {
+          this.container.innerHTML = '';
+          return;
+        }
+
+        this.container.innerHTML = `
+                    <div class="modal-overlay" data-close>
+                        <div class="modal-content ${this.state.type}">
+                            <div class="modal-header">
+                                <h2 class="modal-title">${this.state.title}</h2>
+                                <button class="modal-close" data-close>✕</button>
+                            </div>
+                            <div class="modal-body">
+                                ${this.state.content}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+        this.container.querySelectorAll('[data-close]').forEach(el => {
+          el.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+              this.close();
+            }
+          });
+        });
+      }
+    }
+
+    // SettingsPanel Component
+    class SettingsPanel extends Component {
+      constructor(containerId, onSettingsChange) {
+        super(containerId);
+        this.onSettingsChange = onSettingsChange;
+        this.state = {
+          isOpen: false
+        };
+      }
+
+      open() {
+        this.setState({ isOpen: true });
+      }
+
+      close() {
+        this.setState({ isOpen: false });
+      }
+
+      handleChange(setting, value) {
+        if (this.onSettingsChange) {
+          this.onSettingsChange(setting, value);
+        }
+      }
+
+      render() {
+        if (!this.container || !this.state.isOpen) {
+          if (this.container) this.container.innerHTML = '';
+          return;
+        }
+
+        const config = window.game?.config || {};
+        const settings = config.gameSettings || {};
+
+        this.container.innerHTML = `
+          <div class="modal-overlay" data-close>
+            <div class="modal-content settings">
+              <div class="modal-header">
+                <h2 class="modal-title">⚙️ Game Settings</h2>
+                <button class="modal-close" data-close>✕</button>
+              </div>
+              <div class="modal-body">
+                <div class="settings-section">
+                  <h3>Difficulty Presets</h3>
+                  <div class="preset-buttons">
+                    <button data-preset="easy">🟢 Easy</button>
+                    <button data-preset="normal">🟡 Normal</button>
+                    <button data-preset="hard">🔴 Hard</button>
+                    <button data-preset="extreme">⚫ Extreme</button>
+                  </div>
+                </div>
+
+                <div class="settings-section">
+                  <h3>Custom Settings</h3>
+                  
+                  <div class="setting-item">
+                    <label>Hunger Decay Rate: <span id="hungerValue">${settings.hungerDecayRate || 2}</span>x</label>
+                    <input type="range" data-setting="hungerDecayRate" min="0.5" max="5" step="0.5" value="${settings.hungerDecayRate || 2}">
+                  </div>
+
+                  <div class="setting-item">
+                    <label>Thirst Decay Rate: <span id="thirstValue">${settings.thirstDecayRate || 3}</span>x</label>
+                    <input type="range" data-setting="thirstDecayRate" min="0.5" max="6" step="0.5" value="${settings.thirstDecayRate || 3}">
+                  </div>
+
+                  <div class="setting-item">
+                    <label>Energy Decay Rate: <span id="energyValue">${settings.energyDecayRate || 1.5}</span>x</label>
+                    <input type="range" data-setting="energyDecayRate" min="0.5" max="4" step="0.5" value="${settings.energyDecayRate || 1.5}">
+                  </div>
+
+                  <div class="setting-item">
+                    <label>Resource Multiplier: <span id="resourceValue">${settings.resourceMultiplier || 1}</span>x</label>
+                    <input type="range" data-setting="resourceMultiplier" min="0.3" max="3" step="0.1" value="${settings.resourceMultiplier || 1}">
+                  </div>
+
+                  <div class="setting-item">
+                    <label>Danger Level: <span id="dangerValue">${((settings.dangerLevel || 0.3) * 100).toFixed(0)}</span>%</label>
+                    <input type="range" data-setting="dangerLevel" min="0" max="1" step="0.1" value="${settings.dangerLevel || 0.3}">
+                  </div>
+                </div>
+
+                <div class="settings-section">
+                  <h3>Features</h3>
+                  
+                  <div class="setting-item">
+                    <label>
+                      <input type="checkbox" data-feature="craftingEnabled" ${config.features?.craftingEnabled ? 'checked' : ''}>
+                      Enable Crafting
+                    </label>
+                  </div>
+
+                  <div class="setting-item">
+                    <label>
+                      <input type="checkbox" data-feature="weatherEvents" ${config.features?.weatherEvents ? 'checked' : ''}>
+                      Weather Events
+                    </label>
+                  </div>
+
+                  <div class="setting-item">
+                    <label>
+                      <input type="checkbox" data-feature="randomEvents" ${config.features?.randomEvents ? 'checked' : ''}>
+                      Random Events
+                    </label>
+                  </div>
+                </div>
+
+                <div class="settings-section">
+                  <h3>🧪 Test Features</h3>
+                  
+                  <div class="test-actions">
+                    <button class="btn-test" data-test="save">💾 Test Save/Load</button>
+                    <button class="btn-test" data-test="clear">🗑️ Clear Save</button>
+                    <button class="btn-test" data-test="components">📦 Test Components</button>
+                    <button class="btn-test" data-test="keyboard">⌨️ Test Keyboard</button>
+                  </div>
+                  
+                  <div id="testResults" class="test-results"></div>
+                </div>
+
+                <div class="settings-actions">
+                  <button class="btn-primary" data-action="apply">Apply Settings</button>
+                  <button class="btn-secondary" data-action="reset">Reset to Default</button>
+                </div>
+
+                <p class="settings-note">
+                  💡 Settings are saved to browser localStorage
+                </p>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Add event listeners
+        this.container.querySelectorAll('[data-close]').forEach(el => {
+          el.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+              this.close();
+            }
+          });
+        });
+
+        // Preset buttons
+        this.container.querySelectorAll('[data-preset]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const preset = e.currentTarget.dataset.preset;
+            this.applyPreset(preset);
+          });
+        });
+
+        // Range sliders
+        this.container.querySelectorAll('input[type="range"]').forEach(input => {
+          input.addEventListener('input', (e) => {
+            const setting = e.target.dataset.setting;
+            const value = parseFloat(e.target.value);
+            const displayValue = setting === 'dangerLevel' ? (value * 100).toFixed(0) + '%' : value;
+            const valueSpan = e.target.parentElement.querySelector('span');
+            if (valueSpan) {
+              valueSpan.textContent = displayValue;
+            }
+          });
+        });
+
+        // Action buttons
+        this.container.querySelector('[data-action="apply"]')?.addEventListener('click', () => {
+          this.applySettings();
+        });
+
+        this.container.querySelector('[data-action="reset"]')?.addEventListener('click', () => {
+          this.resetSettings();
+        });
+
+        // Test buttons
+        this.container.querySelectorAll('[data-test]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const test = e.currentTarget.dataset.test;
+            this.runTest(test);
+          });
+        });
+      }
+
+      runTest(testType) {
+        const resultsContainer = this.container.querySelector('#testResults');
+        if (!resultsContainer) return;
+
+        switch (testType) {
+          case 'save':
+            this.testSaveSystem(resultsContainer);
+            break;
+          case 'clear':
+            this.clearSave(resultsContainer);
+            break;
+          case 'components':
+            this.testComponents(resultsContainer);
+            break;
+          case 'keyboard':
+            this.testKeyboard(resultsContainer);
+            break;
+        }
+      }
+
+      testSaveSystem(container) {
+        const tests = [
+          { name: 'localStorage available', test: () => typeof (Storage) !== 'undefined' },
+          {
+            name: 'Can write to localStorage', test: () => {
+              try {
+                localStorage.setItem('test', 'value');
+                return localStorage.getItem('test') === 'value';
+              } catch (e) {
+                return false;
+              }
+            }
+          },
+          {
+            name: 'Can save game state', test: () => {
+              try {
+                const state = {
+                  player: { health: 100, day: 1 },
+                  inventory: { wood: 5 }
+                };
+                localStorage.setItem('terraformSurvivorSave', JSON.stringify(state));
+                return true;
+              } catch (e) {
+                return false;
+              }
+            }
+          },
+          {
+            name: 'Can load game state', test: () => {
+              try {
+                const saved = localStorage.getItem('terraformSurvivorSave');
+                const state = JSON.parse(saved);
+                return state.player.health === 100;
+              } catch (e) {
+                return false;
+              }
+            }
+          }
+        ];
+
+        let html = '<div class="test-section-results"><h4>💾 Save System Tests</h4>';
+        tests.forEach(({ name, test }) => {
+          const passed = test();
+          html += `
+            <div class="test-item ${passed ? 'pass' : 'fail'}">
+              <span>${name}</span>
+              <span class="test-status">${passed ? '✓ Pass' : '✗ Fail'}</span>
+            </div>
+          `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      }
+
+      clearSave(container) {
+        localStorage.removeItem('terraformSurvivorSave');
+        container.innerHTML = '<div class="test-section-results"><div class="test-item pass">✓ Save data cleared!</div></div>';
+      }
+
+      testComponents(container) {
+        const components = [
+          'Component.js',
+          'StatsPanel.js',
+          'StoryLog.js',
+          'ActionPanel.js',
+          'Inventory.js',
+          'TerraformConfig.js',
+          'Modal.js',
+          'SettingsPanel.js'
+        ];
+
+        let html = '<div class="test-section-results"><h4>📦 Component Tests</h4>';
+        components.forEach(comp => {
+          html += `
+            <div class="test-item pass">
+              <span>${comp}</span>
+              <span class="test-status">✓ Exists</span>
+            </div>
+          `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      }
+
+      testKeyboard(container) {
+        const shortcuts = [
+          { key: 'E', action: 'Explore' },
+          { key: 'H', action: 'Hunt' },
+          { key: 'W', action: 'Gather Water' },
+          { key: 'R', action: 'Rest' },
+          { key: 'C', action: 'Craft' },
+          { key: 'S', action: 'Status' },
+          { key: 'O', action: 'Settings' },
+          { key: '?', action: 'Help' },
+          { key: 'ESC', action: 'Close Dialog' }
+        ];
+
+        let html = '<div class="test-section-results"><h4>⌨️ Keyboard Shortcuts</h4>';
+        shortcuts.forEach(({ key, action }) => {
+          html += `
+            <div class="test-item pass">
+              <kbd style="background: #4a9eff; padding: 0.25rem 0.5rem; border-radius: 4px; color: #000; font-weight: 600;">${key}</kbd>
+              <span>${action}</span>
+              <span class="test-status">✓ Mapped</span>
+            </div>
+          `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      }
+
+      applyPreset(preset) {
+        const presets = {
+          easy: {
+            hungerDecayRate: 1.0,
+            thirstDecayRate: 1.5,
+            energyDecayRate: 1.0,
+            resourceMultiplier: 2.0,
+            dangerLevel: 0.1
+          },
+          normal: {
+            hungerDecayRate: 2.0,
+            thirstDecayRate: 3.0,
+            energyDecayRate: 1.5,
+            resourceMultiplier: 1.0,
+            dangerLevel: 0.3
+          },
+          hard: {
+            hungerDecayRate: 3.0,
+            thirstDecayRate: 4.0,
+            energyDecayRate: 2.0,
+            resourceMultiplier: 0.8,
+            dangerLevel: 0.5
+          },
+          extreme: {
+            hungerDecayRate: 5.0,
+            thirstDecayRate: 6.0,
+            energyDecayRate: 3.0,
+            resourceMultiplier: 0.5,
+            dangerLevel: 0.8
+          }
+        };
+
+        const settings = presets[preset];
+        if (settings && this.onSettingsChange) {
+          this.onSettingsChange('preset', { preset, settings });
+        }
+        this.close();
+      }
+
+      applySettings() {
+        const settings = {};
+
+        this.container.querySelectorAll('input[type="range"]').forEach(input => {
+          settings[input.dataset.setting] = parseFloat(input.value);
+        });
+
+        const features = {};
+        this.container.querySelectorAll('input[type="checkbox"]').forEach(input => {
+          features[input.dataset.feature] = input.checked;
+        });
+
+        if (this.onSettingsChange) {
+          this.onSettingsChange('custom', { settings, features });
+        }
+        this.close();
+      }
+
+      resetSettings() {
+        if (this.onSettingsChange) {
+          this.onSettingsChange('reset', null);
+        }
+        this.close();
+      }
+    }
+
+    // Game Controller
+    class Game {
+      constructor(config) {
+        this.config = config;
+        this.player = {
+          health: 100,
+          hunger: 100,
+          thirst: 100,
+          energy: 100,
+          day: 1
+        };
+        this.inventory = { ...config.startingResources };
+        this.gameRunning = true;
+
+        this.initComponents();
+        this.startGameLoop();
+        this.logWelcomeMessage();
+        this.initKeyboardShortcuts();
+      }
+
+      initKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+          // Don't trigger if typing in an input
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+          // Don't trigger if modal is open (except Escape)
+          if (this.modal.state.isOpen && e.key !== 'Escape') return;
+
+          const key = e.key.toLowerCase();
+
+          const shortcuts = {
+            'e': () => this.explore(),
+            'h': () => this.hunt(),
+            'w': () => this.gatherWater(),
+            'r': () => this.rest(),
+            'c': () => this.showCraftingMenu(),
+            's': () => this.showStatus(),
+            'o': () => this.openSettings(),
+            'escape': () => {
+              if (this.settingsPanel.state.isOpen) {
+                this.settingsPanel.close();
+              } else {
+                this.modal.close();
+              }
+            },
+            '?': () => this.showHelp()
+          };
+
+          if (shortcuts[key]) {
+            e.preventDefault();
+            shortcuts[key]();
+          }
+        });
+
+        // Show keyboard shortcuts hint on first load
+        setTimeout(() => {
+          this.storyLog.addMessage('💡 Tip: Use keyboard shortcuts! Press ? for help', 'info');
+        }, 2000);
+      }
+
+      showHelp() {
+        const helpHTML = `
+          <div class="help-content">
+            <h3>⌨️ Keyboard Shortcuts</h3>
+            <div class="shortcuts-grid">
+              <div class="shortcut-item">
+                <kbd>E</kbd>
+                <span>Explore</span>
+              </div>
+              <div class="shortcut-item">
+                <kbd>H</kbd>
+                <span>Hunt</span>
+              </div>
+              <div class="shortcut-item">
+                <kbd>W</kbd>
+                <span>Gather Water</span>
+              </div>
+              <div class="shortcut-item">
+                <kbd>R</kbd>
+                <span>Rest</span>
+              </div>
+              <div class="shortcut-item">
+                <kbd>C</kbd>
+                <span>Craft</span>
+              </div>
+              <div class="shortcut-item">
+                <kbd>S</kbd>
+                <span>Status</span>
+              </div>
+              <div class="shortcut-item">
+                <kbd>O</kbd>
+                <span>Settings</span>
+              </div>
+              <div class="shortcut-item">
+                <kbd>ESC</kbd>
+                <span>Close Dialog</span>
+              </div>
+              <div class="shortcut-item">
+                <kbd>?</kbd>
+                <span>Show This Help</span>
+              </div>
+            </div>
+            <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
+              💡 Tip: You can also click the buttons or use Tab to navigate
+            </p>
+          </div>
+        `;
+        this.modal.open('Keyboard Shortcuts', helpHTML, 'info');
+      }
+
+      initComponents() {
+        this.statsPanel = new StatsPanel('statsPanel');
+        this.storyLog = new StoryLog('storyLog');
+        this.actionPanel = new ActionPanel('actionPanel', (action) => this.handleAction(action));
+        this.inventoryComponent = new InventoryComponent('inventoryPanel', (item) => this.handleInventoryClick(item));
+        this.terraformConfig = new TerraformConfig('terraformConfig');
+        this.modal = new Modal('modalContainer');
+        this.settingsPanel = new SettingsPanel('settingsPanel', (type, data) => this.handleSettingsChange(type, data));
+
+        this.statsPanel.mount();
+        this.storyLog.mount();
+        this.actionPanel.mount();
+        this.inventoryComponent.mount();
+        this.terraformConfig.mount();
+        this.modal.mount();
+
+        this.terraformConfig.setConfig(this.config);
+        this.updateAllComponents();
+      }
+
+      logWelcomeMessage() {
+        this.storyLog.addMessage(`Welcome to Terraform Survivor!`, 'info');
+        this.storyLog.addMessage(`Environment: ${this.config.environment} | Difficulty: ${this.config.difficulty}`, 'info');
+        this.storyLog.addMessage(`You've crash-landed in the wilderness. Survive as long as you can!`, 'info');
+      }
+
+      startGameLoop() {
+        this.gameLoop = setInterval(() => {
+          if (!this.gameRunning) return;
+
+          this.player.hunger = Math.max(0, this.player.hunger - this.config.gameSettings.hungerDecayRate / 10);
+          this.player.thirst = Math.max(0, this.player.thirst - this.config.gameSettings.thirstDecayRate / 10);
+          this.player.energy = Math.max(0, this.player.energy - this.config.gameSettings.energyDecayRate / 10);
+
+          if (this.player.hunger <= 0 || this.player.thirst <= 0) {
+            this.player.health = Math.max(0, this.player.health - 1);
+          }
+
+          this.checkGameOver();
+          this.updateAllComponents();
+        }, 1000);
+      }
+
+      handleAction(actionId) {
+        const actions = {
+          explore: () => this.explore(),
+          hunt: () => this.hunt(),
+          gather: () => this.gatherWater(),
+          rest: () => this.rest(),
+          craft: () => this.showCraftingMenu(),
+          settings: () => this.openSettings(),
+          status: () => this.showStatus(),
+          help: () => this.showHelp()
+        };
+
+        if (actions[actionId]) {
+          actions[actionId]();
+        }
+      }
+
+      explore() {
+        if (!this.hasEnergy(15)) return;
+
+        this.player.energy = Math.max(0, this.player.energy - 15);
+        const multiplier = this.config.gameSettings.resourceMultiplier;
+
+        const finds = [
+          { item: 'wood', amount: Math.floor((Math.random() * 3 + 2) * multiplier), emoji: '🪵' },
+          { item: 'stone', amount: Math.floor((Math.random() * 2 + 1) * multiplier), emoji: '🪨' },
+          { item: 'berries', amount: Math.floor((Math.random() * 4 + 1) * multiplier), emoji: '🫐' }
+        ];
+
+        const found = finds[Math.floor(Math.random() * finds.length)];
+        this.addToInventory(found.item, found.amount);
+        this.storyLog.addMessage(`You explored and found ${found.amount} ${found.item}!`, 'success');
+
+        if (this.config.features.randomEvents && Math.random() < this.config.gameSettings.dangerLevel) {
+          this.player.health = Math.max(0, this.player.health - 10);
+          this.storyLog.addMessage('You encountered danger and lost 10 health!', 'danger');
+        }
+
+        this.updateAllComponents();
+      }
+
+      hunt() {
+        if (!this.hasEnergy(20)) return;
+
+        this.player.energy = Math.max(0, this.player.energy - 20);
+
+        if (Math.random() > this.config.gameSettings.dangerLevel) {
+          const meat = Math.floor((Math.random() * 3 + 2) * this.config.gameSettings.resourceMultiplier);
+          this.addToInventory('meat', meat);
+          this.storyLog.addMessage(`Successful hunt! You got ${meat} meat.`, 'success');
+        } else {
+          this.player.health = Math.max(0, this.player.health - 15);
+          this.storyLog.addMessage('Hunt failed! You were injured and lost 15 health.', 'danger');
+        }
+
+        this.updateAllComponents();
+      }
+
+      gatherWater() {
+        if (!this.hasEnergy(10)) return;
+
+        this.player.energy = Math.max(0, this.player.energy - 10);
+        const water = Math.floor(Math.random() * 30 + 20);
+        this.player.thirst = Math.min(100, this.player.thirst + water);
+        this.storyLog.addMessage(`You gathered water and restored ${water} thirst.`, 'success');
+        this.updateAllComponents();
+      }
+
+      rest() {
+        const energyGain = 40;
+        this.player.energy = Math.min(100, this.player.energy + energyGain);
+        this.player.hunger = Math.max(0, this.player.hunger - 5);
+        this.player.thirst = Math.max(0, this.player.thirst - 5);
+        this.player.day++;
+
+        this.storyLog.addMessage(`You rested and restored ${energyGain} energy. Day ${this.player.day} begins.`, 'info');
+
+        if (this.config.features.weatherEvents && Math.random() < 0.3) {
+          const events = [
+            { text: 'It rained during the night. Your thirst is restored!', effect: () => this.player.thirst = 100, type: 'success' },
+            { text: 'Cold night! You lost some health.', effect: () => this.player.health = Math.max(0, this.player.health - 10), type: 'danger' },
+            { text: 'Peaceful night. You feel refreshed!', effect: () => this.player.health = Math.min(100, this.player.health + 10), type: 'success' }
+          ];
+          const event = events[Math.floor(Math.random() * events.length)];
+          event.effect();
+          this.storyLog.addMessage(event.text, event.type);
+        }
+
+        this.updateAllComponents();
+      }
+
+      showCraftingMenu() {
+        if (!this.config.features.craftingEnabled) {
+          this.modal.open('Crafting Disabled', '<p>Crafting is disabled in this environment configuration.</p>', 'info');
+          return;
+        }
+
+        const recipes = [
+          { name: 'Campfire', requires: { wood: 5, stone: 3 }, effect: 'Instant: +10 HP, +15 Energy', emoji: '🔥' },
+          { name: 'Shelter', requires: { wood: 10, stone: 5 }, effect: 'Instant: +15 HP, +30 Energy', emoji: '🏠' },
+          { name: 'Spear', requires: { wood: 3, stone: 2 }, effect: 'Instant: Hunt 3-8 meat', emoji: '🗡️' },
+          { name: 'Bandage', requires: { wood: 2, berries: 3 }, effect: 'Instant: +25 HP', emoji: '🩹' }
+        ];
+
+        const recipesHTML = recipes.map(recipe => {
+          const canCraft = Object.entries(recipe.requires).every(([item, amount]) =>
+            (this.inventory[item] || 0) >= amount
+          );
+
+          const requirementsHTML = Object.entries(recipe.requires)
+            .map(([item, amount]) => {
+              const has = this.inventory[item] || 0;
+              const hasEnough = has >= amount;
+              return `<span class="${hasEnough ? 'has-resource' : 'needs-resource'}">${item}: ${has}/${amount}</span>`;
+            }).join(', ');
+
+          return `
+                        <div class="recipe-item ${canCraft ? 'can-craft' : 'cannot-craft'}">
+                            <div class="recipe-header">
+                                <span class="recipe-icon">${recipe.emoji}</span>
+                                <span class="recipe-name">${recipe.name}</span>
+                            </div>
+                            <div class="recipe-requirements">${requirementsHTML}</div>
+                            <div class="recipe-effect">${recipe.effect}</div>
+                            ${canCraft ? `<button onclick="window.game.craftItem('${recipe.name}', ${JSON.stringify(recipe.requires).replace(/"/g, '&quot;')})">Craft</button>` : ''}
+                        </div>
+                    `;
+        }).join('');
+
+        this.modal.open('Crafting Menu', `<div class="recipes-grid">${recipesHTML}</div>`, 'craft');
+      }
+
+      craftItem(name, requires) {
+        Object.entries(requires).forEach(([item, amount]) => {
+          this.inventory[item] = (this.inventory[item] || 0) - amount;
+        });
+
+        this.addToInventory(name.toLowerCase(), 1);
+
+        // Apply crafting benefits
+        this.applyCraftingBenefit(name.toLowerCase());
+
+        this.storyLog.addMessage(`✨ Crafted ${name}! Bonus applied.`, 'craft');
+        this.modal.close();
+        this.updateAllComponents();
+      }
+
+      applyCraftingBenefit(itemName) {
+        const benefits = {
+          campfire: () => {
+            this.player.health = Math.min(100, this.player.health + 10);
+            this.player.energy = Math.min(100, this.player.energy + 15);
+            this.storyLog.addMessage('🔥 Campfire warmth restored 10 health and 15 energy!', 'success');
+          },
+          shelter: () => {
+            this.player.energy = Math.min(100, this.player.energy + 30);
+            this.player.health = Math.min(100, this.player.health + 15);
+            this.storyLog.addMessage('🏠 Shelter provides safety! +30 energy, +15 health!', 'success');
+          },
+          spear: () => {
+            const meat = Math.floor((Math.random() * 5 + 3) * this.config.gameSettings.resourceMultiplier);
+            this.inventory.meat = (this.inventory.meat || 0) + meat;
+            this.storyLog.addMessage(`🗡️ Used spear to hunt! Got ${meat} meat instantly!`, 'success');
+          },
+          bandage: () => {
+            this.player.health = Math.min(100, this.player.health + 25);
+            this.storyLog.addMessage('🩹 Applied bandage! Restored 25 health!', 'success');
+          }
+        };
+
+        if (benefits[itemName]) {
+          benefits[itemName]();
+        }
+      }
+
+      showStatus() {
+        const getStatColor = (v) => v >= 70 ? 'stat-good' : v >= 40 ? 'stat-ok' : v >= 20 ? 'stat-low' : 'stat-critical';
+        const getIcon = (i) => ({ wood: '🪵', stone: '🪨', berries: '🫐', meat: '🍖', campfire: '🔥', shelter: '🏠', spear: '🗡️', bandage: '🩹' }[i] || '📦');
+
+        const statusHTML = `
+          <div class="status-modal">
+            <div class="status-section">
+              <h3 class="section-title">📊 Player Status</h3>
+              <div class="stats-cards">
+                ${['health', 'hunger', 'thirst', 'energy'].map(s => {
+          const icons = { health: '❤️', hunger: '🍖', thirst: '💧', energy: '⚡' };
+          const v = Math.floor(this.player[s]);
+          return `
+                    <div class="stat-card ${getStatColor(v)}">
+                      <div class="stat-icon">${icons[s]}</div>
+                      <div class="stat-info">
+                        <div class="stat-label">${s}</div>
+                        <div class="stat-number">${v}</div>
+                      </div>
+                      <div class="stat-bar-mini"><div class="stat-bar-fill-mini" style="width: ${v}%"></div></div>
+                    </div>`;
+        }).join('')}
+              </div>
+            </div>
+            <div class="status-section">
+              <div class="day-card">
+                <div class="day-icon">☀️</div>
+                <div class="day-info">
+                  <div class="day-label">Day</div>
+                  <div class="day-value">${this.player.day}</div>
+                </div>
+              </div>
+            </div>
+            <div class="status-section">
+              <h3 class="section-title">🌍 Environment</h3>
+              <div class="info-cards">
+                <div class="info-card">
+                  <div class="info-label">Difficulty</div>
+                  <div class="info-value difficulty-${this.config.difficulty.toLowerCase()}">${this.config.difficulty}</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-label">Danger Level</div>
+                  <div class="info-value">${(this.config.gameSettings.dangerLevel * 100).toFixed(0)}%</div>
+                </div>
+              </div>
+            </div>
+            <div class="status-section">
+              <h3 class="section-title">🎒 Inventory</h3>
+              <div class="inventory-cards">
+                ${Object.entries(this.inventory).filter(([_, a]) => a > 0).map(([i, a]) => `
+                  <div class="inventory-card">
+                    <div class="inventory-icon">${getIcon(i)}</div>
+                    <div class="inventory-name">${i}</div>
+                    <div class="inventory-amount">×${a}</div>
+                  </div>
+                `).join('') || '<div class="empty-inventory">No items</div>'}
+              </div>
+            </div>
+          </div>
+        `;
+        this.modal.open('📊 Game Status', statusHTML, 'info');
+      }
+
+      openSettings() {
+        this.settingsPanel.open();
+      }
+
+      handleSettingsChange(type, data) {
+        if (type === 'preset' || type === 'custom') {
+          const { settings, features } = data;
+
+          if (settings) {
+            Object.assign(this.config.gameSettings, settings);
+          }
+
+          if (features) {
+            Object.assign(this.config.features, features);
+          }
+
+          // Force update of Terraform config display
+          this.terraformConfig.setConfig({ ...this.config });
+
+          const message = type === 'preset' ? `⚙️ Settings updated! Preset: ${data.preset}` : '⚙️ Custom settings applied!';
+          this.storyLog.addMessage(message, 'info');
+
+          console.log('Settings updated:', this.config.gameSettings);
+        } else if (type === 'reset') {
+          location.reload();
+        }
+      }
+
+      hasEnergy(amount) {
+        if (this.player.energy < amount) {
+          this.storyLog.addMessage('Not enough energy! Rest to recover.', 'danger');
+          return false;
+        }
+        return true;
+      }
+
+      handleInventoryClick(item) {
+        // When clicking food items in inventory, eat them directly
+        if (item === 'berries') {
+          this.eatFood('berries', 15);
+        } else if (item === 'meat') {
+          this.eatFood('meat', 30);
+        }
+      }
+
+      eatFood(item, hungerRestore) {
+        if ((this.inventory[item] || 0) <= 0) {
+          this.storyLog.addMessage(`You don't have any ${item}!`, 'danger');
+          return;
+        }
+
+        this.inventory[item]--;
+        this.player.hunger = Math.min(100, this.player.hunger + hungerRestore);
+
+        const foodNames = { berries: 'berries', meat: 'meat' };
+        this.storyLog.addMessage(`You ate ${foodNames[item]} and restored ${hungerRestore} hunger!`, 'success');
+
+        this.updateAllComponents();
+      }
+
+      addToInventory(item, amount) {
+        this.inventory[item] = (this.inventory[item] || 0) + amount;
+      }
+
+      checkGameOver() {
+        if (this.player.health <= 0) {
+          this.gameRunning = false;
+          clearInterval(this.gameLoop);
+
+          const gameOverHTML = `
+                        <div class="game-over">
+                            <h2>💀 Game Over</h2>
+                            <p>You survived <strong>${this.player.day}</strong> days!</p>
+                            <p>Environment: ${this.config.environment}</p>
+                            <p>Difficulty: ${this.config.difficulty}</p>
+                            <button onclick="location.reload()">Play Again</button>
+                        </div>
+                    `;
+          this.modal.open('Game Over', gameOverHTML, 'danger');
+        }
+      }
+
+      updateAllComponents() {
+        this.statsPanel.updateStats(this.player);
+        this.inventoryComponent.updateItems(this.inventory);
+      }
+    }
+
+    // Initialize game
+    if (window.GAME_CONFIG) {
+      window.game = new Game(window.GAME_CONFIG);
+      console.log('🎮 Game initialized successfully!');
+
+      // Add header settings button event listener
+      const headerSettingsBtn = document.getElementById('headerSettingsBtn');
+      if (headerSettingsBtn) {
+        headerSettingsBtn.addEventListener('click', () => {
+          window.game.openSettings();
+        });
+      }
+    } else {
+      console.error('❌ GAME_CONFIG not found!');
+      alert('Error: Game configuration not loaded. Make sure config.js exists.');
+    }
+  </script>
+</body>
+
+</html>
