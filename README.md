@@ -4,6 +4,10 @@
 
 A browser-based survival game where **Terraform controls the difficulty**. Demonstrates clean architecture, component design, and IaC principles.
 
+## 🎮 Play Now
+
+**Live Demo:** https://mark-siazon.github.io/acads-Terraform_Survivor-ELEC5/
+
 ## 🚀 Quick Start
 
 ```bash
@@ -13,17 +17,55 @@ python run-game.py
 
 # Or open directly (no server)
 open src/frontend/standalone.html
-
-# Deploy to GitHub Pages (free)
-git push origin main
-# Enable Pages in repo settings → /src/frontend
-
-# Or deploy with Terraform
-cd src/infrastructure/terraform
-terraform apply -var-file="environments/prod.tfvars"
 ```
 
-See [Deployment Guide](docs/guides/DEPLOYMENT.md) for full instructions.
+## 🏗️ Terraform Implementation
+
+This project uses **Terraform as Infrastructure as Code** to manage game configuration and deployment:
+
+### How Terraform Controls the Game
+
+Terraform generates `src/frontend/config.js` which controls:
+
+- **Game Difficulty** (easy/normal/hard/extreme)
+- **Resource Decay Rates** (hunger, thirst, energy)
+- **Starting Resources** (wood, stone, food)
+- **Danger Level** (encounter probability)
+- **Feature Toggles** (crafting, weather, events)
+
+### Configure Game Difficulty with Terraform
+
+```bash
+cd src/infrastructure/terraform
+
+# Initialize Terraform
+terraform init
+
+# Apply Easy Mode (Development)
+terraform apply -var-file="environments/dev.tfvars" -auto-approve
+
+# Apply Hard Mode (Production)
+terraform apply -var-file="environments/prod.tfvars" -auto-approve
+
+# View current configuration
+terraform output
+```
+
+### Deploy to GitHub Pages
+
+```bash
+# 1. Configure with Terraform
+terraform apply -var-file="environments/prod.tfvars" -auto-approve
+
+# 2. Commit and push
+git add ../../frontend/config.js
+git commit -m "Update game config via Terraform"
+git push origin main
+
+# 3. GitHub Actions automatically deploys to Pages
+```
+
+See [Terraform Deployment Guide](docs/TERRAFORM_DEPLOYMENT.md) for detailed instructions.
 
 ## 📁 Structure
 
@@ -66,6 +108,7 @@ terraform-survivor/
 - [Quick Start](docs/guides/QUICKSTART.md) - Get playing in 5 minutes
 - [Setup Guide](docs/guides/START_HERE.md) - Installation and setup
 - [Deployment](docs/guides/DEPLOYMENT.md) - Deploy to GitHub Pages, Vercel
+- [Terraform Deployment](docs/TERRAFORM_DEPLOYMENT.md) - **IaC deployment guide**
 
 **Features:**
 
@@ -87,29 +130,120 @@ terraform-survivor/
 ## 🔧 Development
 
 ```bash
-# Start server (recommended)
+# Start local server
 python run-game.py
 
-# Or use the old server
-python .github/tools/server.py
-
-# Terraform
+# Configure game with Terraform
 cd src/infrastructure/terraform
+terraform init
 terraform apply -var-file="environments/dev.tfvars"
+
+# Deploy changes
+git add ../../frontend/config.js
+git commit -m "Update config"
+git push origin main
 ```
 
-## 🎮 How It Works
+## 🧪 Testing Terraform Configuration
 
-Terraform variables control game behavior:
+```bash
+# View what would change (dry run)
+terraform plan -var-file="environments/prod.tfvars"
 
-| Variable              | Effect               |
-| --------------------- | -------------------- |
-| `hunger_decay_rate`   | How fast you starve  |
-| `resource_multiplier` | Gathering efficiency |
-| `danger_level`        | Encounter chance     |
-| `crafting_enabled`    | Feature toggle       |
+# Apply and see outputs
+terraform apply -var-file="environments/prod.tfvars"
 
-Edit `src/infrastructure/terraform/environments/*.tfvars` to customize.
+# Check generated config
+cat ../../frontend/config.js
+
+# View deployment info
+terraform output
+```
+
+## 🎮 How Terraform Integration Works
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Terraform Configuration                   │
+│  (src/infrastructure/terraform/)                            │
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │ variables.tf │  │   main.tf    │  │ outputs.tf   │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+│         │                  │                  │             │
+│         └──────────────────┼──────────────────┘             │
+│                            │                                │
+│                            ▼                                │
+│                  ┌──────────────────┐                       │
+│                  │ config.js.tpl    │ (Template)            │
+│                  └──────────────────┘                       │
+└─────────────────────────┬────────────────────────────────────┘
+                          │
+                          │ terraform apply
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Generated Configuration File                    │
+│  (src/frontend/config.js)                                   │
+│                                                              │
+│  const CONFIG = {                                           │
+│    difficulty: "hard",                                      │
+│    gameSettings: {                                          │
+│      hungerDecayRate: 3.0,                                  │
+│      resourceMultiplier: 0.8,                               │
+│      dangerLevel: 0.5                                       │
+│    }                                                        │
+│  }                                                          │
+└─────────────────────────┬────────────────────────────────────┘
+                          │
+                          │ git push
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│              GitHub Actions Workflow                         │
+│  (.github/workflows/deploy-pages.yml)                       │
+│                                                              │
+│  1. Checkout code                                           │
+│  2. Upload /src/frontend to GitHub Pages                    │
+│  3. Deploy to: mark-siazon.github.io/...                    │
+└─────────────────────────┬────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Live Game (Browser)                        │
+│  Loads config.js and applies Terraform-defined settings     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Terraform Variables Control Game Behavior
+
+| Variable              | Effect                  | Easy Mode | Hard Mode |
+| --------------------- | ----------------------- | --------- | --------- |
+| `hunger_decay_rate`   | How fast you starve     | 1.0x      | 3.0x      |
+| `thirst_decay_rate`   | How fast you dehydrate  | 1.5x      | 4.0x      |
+| `energy_decay_rate`   | How fast you tire       | 1.0x      | 2.0x      |
+| `resource_multiplier` | Gathering efficiency    | 2.0x      | 0.8x      |
+| `danger_level`        | Encounter chance        | 10%       | 50%       |
+| `crafting_enabled`    | Feature toggle          | ✅        | ✅        |
+| `starting_resources`  | Initial wood/stone/food | 10/5/5    | 3/2/1     |
+
+### Environment Files
+
+Edit `src/infrastructure/terraform/environments/*.tfvars` to customize:
+
+- **`dev.tfvars`** - Easy mode for testing
+- **`prod.tfvars`** - Hard mode for production
+- **`staging.tfvars`** - Create your own custom difficulty
+
+### Why Use Terraform?
+
+1. **Version Control** - Game settings tracked in Git
+2. **Reproducibility** - Same config every deployment
+3. **Environment Management** - Easy dev/staging/prod separation
+4. **Infrastructure as Code** - Demonstrates IaC principles
+5. **Automation** - One command updates everything
 
 ## 📝 License
 
